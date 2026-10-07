@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Meeting Recorder",
+  "version": "0.1.0",
+  "identifier": "com.meetingrecorder.app",
+  "mainBinaryName": "MeetingRecorder",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-release.ps1",
+    "frontendDist": "../dist",
+    "windows": { "staticVCRuntime": true }
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Meeting Recorder",
+        "width": 800,
+        "height": 600
+      }
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": { "enable": true, "scope": [] }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "useLocalToolsDir": true,
+    "resources": [
+      "resources/whisper/",
+      "resources/diarization/",
+      "resources/RUNTIME_NOTICES.md"
+    ],
+    "windows": {
+      "bundleVCRuntime": true,
+      "webviewInstallMode": { "type": "offlineInstaller", "silent": true },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["PortugueseBR", "English"],
+        "startMenuFolder": "Meeting Recorder"
+      },
+      "wix": { "language": "pt-BR" }
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

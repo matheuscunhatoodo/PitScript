@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>MeetingRecorder video test</title>
+    <style>
+      body { font: 24px system-ui; background: #162436; color: white; padding: 24px; }
+      canvas { width: 80vw; max-height: 65vh; }
+      button { font: inherit; padding: 12px; }
+    </style>
+  </head>
+  <body>
+    <h1>Teste local de vídeo — Fase 11</h1>
+    <p>Sem rede e sem dados de reuniões. Mantenha esta janela visível.</p>
+    <button id="tone">Iniciar som de teste</button>
+    <canvas width="1280" height="720"></canvas>
+    <script>
+      const canvas = document.querySelector("canvas");
+      const context = canvas.getContext("2d");
+      const start = performance.now();
+      let flashUntil = 0;
+      function draw() {
+        const seconds = (performance.now() - start) / 1000;
+        context.fillStyle = performance.now() < flashUntil ? "white" : "#244057";
+        context.fillRect(0, 0, 1280, 720);
+        context.fillStyle = "#ef6559";
+        context.beginPath();
+        context.arc(640 + 400 * Math.sin(seconds), 360 + 200 * Math.cos(seconds * 0.7), 65, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = "white";
+        context.font = "44px sans-serif";
+        context.fillText(`Reunião sintética / ${seconds.toFixed(2)}s`, 40, 80);
+        requestAnimationFrame(draw);
+      }
+      draw();
+      document.querySelector("#tone").onclick = () => {
+        const audio = new AudioContext();
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        oscillator.frequency.value = 440;
+        gain.gain.value = 0.025;
+        oscillator.connect(gain).connect(audio.destination);
+        oscillator.start();
+        document.querySelector("#tone").disabled = true;
+        setInterval(() => {
+          // An audible pulse paired with a visual flash helps compare audio/video offsets.
+          flashUntil = performance.now() + 120;
+          gain.gain.setValueAtTime(0.1, audio.currentTime);
+          gain.gain.linearRampToValueAtTime(0.025, audio.currentTime + 0.08);
+        }, 1000);
+      };
+    </script>
+  </body>
+</html>

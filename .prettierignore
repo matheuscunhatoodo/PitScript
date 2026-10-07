@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.npm-cache/
+docs/
+AGENTS.md
+package-lock.json
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/
+src-tauri/src/
+src-tauri/Cargo.toml
+src-tauri/Cargo.lock

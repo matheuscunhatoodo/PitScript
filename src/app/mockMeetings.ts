@@ -1,0 +1,62 @@
+import type { Meeting } from "../types/meeting";
+
+export const mockMeetings: Meeting[] = [
+  {
+    id: "produto",
+    title: "Planejamento de produto",
+    date: "24 set 2026",
+    time: "10:00",
+    duration: "48 min",
+    status: "completed",
+    microphone: true,
+    systemAudio: true,
+    video: false,
+    transcript: [
+      "00:00  Bom dia, pessoal. Vamos revisar as prioridades desta semana.",
+      "00:18  O primeiro ponto é alinhar o cronograma do lançamento.",
+      "00:42  Depois podemos passar pelas pendências de cada equipe.",
+    ],
+  },
+  {
+    id: "sprint",
+    title: "Revisão de sprint",
+    date: "22 set 2026",
+    time: "14:30",
+    duration: "32 min",
+    status: "processing",
+    microphone: true,
+    systemAudio: true,
+    video: false,
+    transcript: [],
+  },
+  {
+    id: "cliente",
+    title: "Alinhamento com cliente",
+    date: "18 set 2026",
+    time: "11:00",
+    duration: "1 h 05 min",
+    status: "completed",
+    microphone: true,
+    systemAudio: true,
+    video: true,
+    transcript: [
+      "00:00  Obrigado pela presença. Vamos começar pelos objetivos da reunião.",
+      "00:27  Podemos confirmar os próximos passos ao final da conversa.",
+    ],
+  },
+  {
+    id: "equipe",
+    title: "Retrospectiva da equipe",
+    date: "15 set 2026",
+    time: "16:00",
+    duration: "27 min",
+    status: "failed_partial",
+    microphone: true,
+    systemAudio: false,
+    video: false,
+    transcript: [
+      "00:00  Vamos começar pelos pontos que funcionaram bem.",
+      "00:31  O áudio do computador não está disponível neste exemplo.",
+    ],
+  },
+];

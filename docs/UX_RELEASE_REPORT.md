@@ -31,13 +31,16 @@ Não foram acrescentadas dependências de produto, serviços externos, migration
 | `cargo fmt`, `cargo fmt --check` | Aprovados |
 | `cargo clippy --offline --all-targets -- -D warnings` | Aprovado |
 | `cargo test --offline` | 128 aprovados, zero falhas; 5 testes físicos opt-in ignorados; 53,99 s |
-| QA em Chromium/Brave headless | 14 cenários aprovados; zero erros de página |
+| QA em Chromium/Brave headless | 16 cenários aprovados; zero erros de página |
 | QA visual | Referências 1536×1024; notebook 1280×800 e largura 390×844; sem overflow horizontal |
-| Build/lint/format frontend e bundles finais | Em validação nesta etapa; resultados finais registrados abaixo |
+| `npm run lint`, `npm test`, `npm run format:check`, `npm run build` | Aprovados; 33 módulos, JS 266,56 kB / 81,72 kB gzip no build final |
+| Production build / Tauri bundle | Build Rust release aprovado; bundles finais em validação abaixo |
 
 O teste Rust do contador e os novos helpers frontend foram observados falhando antes da implementação e passando depois. A suíte Rust inclui execução real de Whisper/sherpa com fixtures públicas e o ciclo `start → record → stop → prepare → transcribe → persist → reopen` com captura simulada e inferência local real.
 
-Os 14 cenários de navegador cobrem: biblioteca/busca/vazio; segmentos e navegação da pesquisa; player real com metadata/play/pause/seek/velocidade; copiar acentos/exportar/abrir pasta via serviços; reuniões antigas; diarização indisponível; áudio ausente; padrões e seletores; duplo start/stop; navegação com captura ativa; falha parcial e erro de finalização; erro de início persistente; estado inicial indisponível; biblioteca vazia; layouts menores. São testes com **IPC sintético e WAV público**, não uma validação de WASAPI ou do diálogo nativo de exportação. O navegador integrado não acessou localhost; foi usado Chromium em perfil isolado, sem controlar a aplicação do usuário.
+[Evidência dos 16 cenários](design/validation/2026-10-08-browser-results.json). Telas implementadas: [biblioteca](design/implemented/01-biblioteca.png), [gravação](design/implemented/02-gravacao.png), [transcrição](design/implemented/03-transcricao.png).
+
+Os 16 cenários de navegador cobrem: biblioteca/busca/vazio; segmentos e navegação da pesquisa; player real com metadata/play/pause/seek/velocidade; copiar acentos/exportar/abrir pasta via serviços; reuniões antigas; diarização indisponível; áudio ausente; padrões e seletores; duplo start/stop; navegação com captura ativa; falha parcial e erro de finalização; erro de início persistente; estado inicial indisponível; biblioteca vazia; layouts menores; preferência ativa/ausente sem override indevido; snapshot de estado atrasado com falha da consulta seguinte. São testes com **IPC sintético e WAV público**, não uma validação de WASAPI ou do diálogo nativo de exportação. O navegador integrado não acessou localhost; foi usado Chromium em perfil isolado, sem controlar a aplicação do usuário.
 
 ### Correções encontradas durante QA
 
@@ -46,7 +49,14 @@ Os 14 cenários de navegador cobrem: biblioteca/busca/vazio; segmentos e navega�
 - Manter erro de start/stop após um refresh bem-sucedido.
 - Atualizar texto tradicional mesmo se a consulta dos segmentos falhar.
 - Informar falha parcial no detalhe, mesmo quando existe transcrição concluída.
+- Invalidar snapshots antigos após start/stop para preservar a captura confirmada quando um refresh atrasado chega; teste diferido observado falhando e passando após a correção.
+- Conservar o fallback Rust dos dispositivos configurados: a escolha automática envia IDs indefinidos; somente seleção manual envia um override estrito. A opção automática mostra corretamente a preferência existente/ausente.
+- Remover pontuação não renderizada do documento de pesquisa, mantendo os offsets exatos e a cópia/exportação originais.
 - Tratar rejeições síncronas das consultas de preferências/dispositivos na preparação e configurações.
+
+### Revisão independente
+
+Uma revisão do ramo antes da publicação encontrou dois problemas importantes (preferências/fallback e resposta de estado antiga) e um menor (pontuação de pesquisa invisível). Os três foram corrigidos com reprodução RED→GREEN. Nenhum achado crítico foi encontrado. O teste diferido mantém a captura e a finalização visíveis mesmo quando a consulta corretiva falha.
 
 ### Diferenças deliberadas em relação às imagens
 

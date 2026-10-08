@@ -133,6 +133,11 @@ test("structured search includes timestamps and labels, preserving Portuguese an
   assert.equal(findTranscriptMatches(text, "projeto").length, 2);
   assert.equal(findTranscriptMatches(text, "Você").length, 1);
   assert.equal(findTranscriptMatches(text, "00:12").length, 1);
+  assert.equal(
+    findTranscriptMatches(text, ":").length,
+    2,
+    "Only the rendered timestamps contain a colon",
+  );
   assert.deepEqual(buildTranscriptBlocks([]), []);
 });
 

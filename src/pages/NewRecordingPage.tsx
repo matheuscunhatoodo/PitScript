@@ -54,22 +54,30 @@ function DeviceSelect({
   label,
   devices,
   value,
+  configuredId,
   onChange,
 }: {
   id: string;
   label: string;
   devices: AudioDevice[];
   value: string;
+  configuredId: string | null;
   onChange: (value: string) => void;
 }) {
   return (
     <div className="field-group device-field">
       <label htmlFor={id}>{label}</label>
       <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">Padrão do Windows</option>
+        <option value="">
+          {configuredId
+            ? devices.find((device) => device.id === configuredId)
+              ? `Preferência salva: ${devices.find((device) => device.id === configuredId)!.name} · com fallback`
+              : "Preferência salva indisponível · usar fallback"
+            : "Automático · padrão do Windows"}
+        </option>
         {value && !devices.some((d) => d.id === value) && (
           <option value={value}>
-            Preferência salva indisponível · usar fallback
+            Dispositivo selecionado indisponível · escolha outro
           </option>
         )}
         {devices.map((d) => (
@@ -119,8 +127,6 @@ export function NewRecordingPage({
       const messages: string[] = [];
       if (saved.status === "fulfilled") {
         setPreferences(saved.value.settings);
-        setMicrophoneId(saved.value.settings.microphoneDeviceId ?? "");
-        setOutputId(saved.value.settings.outputDeviceId ?? "");
         messages.push(...saved.value.warnings);
       } else
         messages.push(
@@ -397,6 +403,7 @@ export function NewRecordingPage({
                   label="Microfone selecionado"
                   devices={inputs}
                   value={microphoneId}
+                  configuredId={preferences?.microphoneDeviceId ?? null}
                   onChange={setMicrophoneId}
                 />
               )}
@@ -414,6 +421,7 @@ export function NewRecordingPage({
                   label="Saída de áudio selecionada"
                   devices={outputs}
                   value={outputId}
+                  configuredId={preferences?.outputDeviceId ?? null}
                   onChange={setOutputId}
                 />
               )}

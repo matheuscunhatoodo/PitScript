@@ -1,0 +1,29 @@
+{
+  "passed": 16,
+  "checks": [
+    "Biblioteca: grupos, busca por título e vazio",
+    "Transcrição: busca, timestamps, locutores e navegação",
+    "Player: metadata, play/pause, +/-10s, slider e velocidade",
+    "Copiar UTF-8, exportar TXT e abrir pasta usam serviços",
+    "Reuniões antigas: texto e busca sem segmentos",
+    "Falha da diarização mantém transcrição tradicional",
+    "Áudio ausente não remove o texto nem habilita seek",
+    "Refresh atrasado não substitui start confirmado mesmo se recuperação falhar",
+    "Preferências: seleção automática mantém fallback sem override estrito",
+    "Nova gravação: padrões, dispositivos, prevenção de duplo start",
+    "Captura ativa continua visível ao navegar",
+    "Fonte falha e erro de stop preservam a ação de finalizar",
+    "Erro de start permanece após refresh",
+    "Falha inicial de estado bloqueia nova captura",
+    "Biblioteca vazia tem orientação",
+    "Layouts 1280x800 e 390x844 não transbordam"
+  ],
+  "pageErrors": [],
+  "engine": "Brave Chromium headless",
+  "data": "Synthetic IPC and public WAV fixture",
+  "viewports": [
+    "1536x1024",
+    "1280x800",
+    "390x844"
+  ]
+}

@@ -21,6 +21,7 @@ export function useRecording() {
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const operation = useRef(false);
+  const mutation = useRef(0);
   const lifecycle = useRef(0);
   const alive = useRef(false);
   const pending = useRef<Promise<void> | null>(null);
@@ -28,15 +29,21 @@ export function useRecording() {
   const refresh = useCallback(() => {
     if (!isTauri()) return Promise.resolve();
     queued.current = true;
+    if (operation.current) return Promise.resolve();
     if (pending.current) return pending.current;
     pending.current = (async () => {
       do {
         queued.current = false;
         const generation = lifecycle.current;
+        const revision = mutation.current;
         try {
           const state = await getRecordingState();
-          if (generation !== lifecycle.current) {
-            queued.current = alive.current;
+          if (
+            generation !== lifecycle.current ||
+            revision !== mutation.current ||
+            operation.current
+          ) {
+            queued.current = alive.current && !operation.current;
             continue;
           }
           setCapture(state);
@@ -45,13 +52,22 @@ export function useRecording() {
           if (!state.active && state.meeting) {
             try {
               const progress = await getTranscriptionState(state.meeting.id);
-              if (generation === lifecycle.current) setTranscription(progress);
+              if (
+                generation === lifecycle.current &&
+                revision === mutation.current &&
+                !operation.current
+              )
+                setTranscription(progress);
             } catch {
               // Capture state remains usable when progress is temporarily unavailable.
             }
           } else setTranscription(null);
         } catch {
-          if (generation === lifecycle.current)
+          if (
+            generation === lifecycle.current &&
+            revision === mutation.current &&
+            !operation.current
+          )
             setError(
               "Não foi possível atualizar o estado. A captura existente não foi interrompida. Tente atualizar novamente.",
             );
@@ -105,6 +121,7 @@ export function useRecording() {
     )
       return;
     operation.current = true;
+    mutation.current += 1;
     setBusy(true);
     setActionError(null);
     try {
@@ -113,6 +130,7 @@ export function useRecording() {
     } catch (cause) {
       setActionError(`Não foi possível iniciar a gravação. ${String(cause)}`);
     } finally {
+      mutation.current += 1;
       operation.current = false;
       setBusy(false);
       await refresh();
@@ -122,6 +140,7 @@ export function useRecording() {
   async function stop() {
     if (operation.current || !capture?.active) return null;
     operation.current = true;
+    mutation.current += 1;
     setBusy(true);
     setActionError(null);
     try {
@@ -134,6 +153,7 @@ export function useRecording() {
       );
       return null;
     } finally {
+      mutation.current += 1;
       operation.current = false;
       setBusy(false);
       await refresh();

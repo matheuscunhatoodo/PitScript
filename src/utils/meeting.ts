@@ -154,7 +154,7 @@ export function buildTranscriptBlocks(
   return segments.map((segment) => {
     const time = formatDuration(segment.startMs / 1000);
     const text = segment.text.trim();
-    const searchText = `${time}\n${segment.diarizationLabel}:\n${text}`;
+    const searchText = `${time}\n${segment.diarizationLabel}\n${text}`;
     const block = {
       ...segment,
       text,
@@ -162,7 +162,7 @@ export function buildTranscriptBlocks(
       searchText,
       offset,
       labelOffset: offset + time.length + 1,
-      bodyOffset: offset + time.length + segment.diarizationLabel.length + 3,
+      bodyOffset: offset + time.length + segment.diarizationLabel.length + 2,
     };
     offset += searchText.length + 2;
     return block;

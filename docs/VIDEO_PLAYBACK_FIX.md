@@ -12,6 +12,8 @@ A reunião gravava `video.mp4`, mas a tela de detalhe consultava apenas áudio e
 
 Nenhuma dependência nova. Nenhum arquivo de reunião foi convertido, substituído ou enviado ao GitHub.
 
+`.gitattributes` preserva LF no checkout dos arquivos de texto. Isso corrige as falhas de `format:check` causadas pelo checkout CRLF do Git no Windows; não altera conteúdo de arquivos binários.
+
 ## Validação automatizada
 
 | Validação | Resultado |
@@ -29,6 +31,18 @@ Nenhuma dependência nova. Nenhum arquivo de reunião foi convertido, substituí
 Backend: vídeo válido, ausente, inválido e diretório; reunião desconhecida/em gravação; caminhos externos no SQLite; pasta original após mudar configurações e reabrir banco/storage.
 
 Browser: player renderizado e H.264 decodificado, play/pause, diferença de posição inferior a 350 ms na amostra sincronizada, seek, velocidade, timestamps, fullscreen, áudio ou vídeo mais longo, vídeo sem áudio, pausa rápida, metadados atrasados, limpeza ao navegar, falha IPC, mídia inválida, reunião antiga e layouts 1280×800/390×844. Brave headless foi usado porque o Browser plugin não estava disponível. IPC fictício e WAV público/silencioso; decodificação real de mídia. Não equivale a um teste integral da janela WebView2 instalada.
+
+## Instaladores
+
+Build de produção Tauri e bundles NSIS/MSI concluídos. O MSI foi extraído administrativamente em uma pasta isolada, sem instalar ou desinstalar o aplicativo do usuário. Os 37 recursos (118048957 bytes) coincidem com o inventário e o executável coincide byte a byte com o build, exceto a marca de bundle MSI esperada do Tauri. O instalador offline WebView2 tem assinatura Microsoft válida.
+
+Arquivos em `releases/0.1.2/`:
+
+- `MeetingRecorder-Setup.exe`: 307367887 bytes; SHA-256 `a46e7a03d232cd810022d4f24bfa5c11ce8bdc7e4d9f9adaf3d752ee40a10857`.
+- `MeetingRecorder-0.1.2-x64.msi`: 313733120 bytes; SHA-256 `2ce7586617c403460d06b6e40833520569eee66e7d75562e1841a4e5d8543302`.
+- `resources-manifest.json` e `SHA256SUMS.txt`.
+
+Os avisos do linker sobre a geração da biblioteca e do Tauri sobre o sufixo `.app` do identificador são informativos; o identificador foi preservado para manter compatibilidade com instalações existentes. Nenhum teste foi considerado aprovado a partir desses avisos.
 
 ## Como testar no aplicativo
 

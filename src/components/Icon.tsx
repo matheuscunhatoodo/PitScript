@@ -18,14 +18,46 @@ type IconName =
   | "play"
   | "info"
   | "check";
+type ExtraIconName =
+  "folder" | "copy" | "pause" | "stop" | "rewind" | "forward" | "minimize";
 
-const shapes: Record<IconName, ReactNode> = {
+const shapes: Record<IconName | ExtraIconName, ReactNode> = {
+  folder: <path d="M3 6h6l2 3h10v12H3zM3 6V3h6l2 3h8v3" />,
+  copy: (
+    <>
+      <rect x="8" y="8" width="12" height="13" rx="1" />
+      <path d="M15 5V3H3v13h2" />
+    </>
+  ),
+  pause: (
+    <>
+      <path d="M8 5v14M16 5v14" />
+    </>
+  ),
+  stop: <rect x="5" y="5" width="14" height="14" rx="1" fill="currentColor" />,
+  rewind: (
+    <>
+      <path d="M7 4 3 8l4 4M3 8h8a8 8 0 1 1-7 11" />
+      <text x="8" y="17" stroke="none" fill="currentColor" fontSize="8">
+        10
+      </text>
+    </>
+  ),
+  forward: (
+    <>
+      <path d="m17 4 4 4-4 4M21 8h-8a8 8 0 1 0 7 11" />
+      <text x="8" y="17" stroke="none" fill="currentColor" fontSize="8">
+        10
+      </text>
+    </>
+  ),
+  minimize: <path d="M5 12h14" />,
   home: <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" />,
   plus: <path d="M12 5v14M5 12h14" />,
   settings: (
     <>
-      <path d="M12 3.5v2m0 13v2M3.5 12h2m13 0h2M6 6l1.5 1.5m9 9L18 18M18 6l-1.5 1.5m-9 9L6 18" />
-      <circle cx="12" cy="12" r="4" />
+      <path d="m9 3-.7 3-2 .9-2.7-.8L2 10l2.4 2v2L2 16l1.6 3 2.7-.8 2 .9L9 22h6l.7-2.9 2-.9 2.7.8L22 16l-2.4-2v-2L22 10l-1.6-3-2.7.8-2-.9L15 3z" />
+      <circle cx="12" cy="12.5" r="3.5" />
     </>
   ),
   search: (
@@ -66,7 +98,13 @@ const shapes: Record<IconName, ReactNode> = {
   check: <path d="m4 12 5 5L20 6" />,
 };
 
-export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
+export function Icon({
+  name,
+  size = 20,
+}: {
+  name: IconName | ExtraIconName;
+  size?: number;
+}) {
   return (
     <svg
       width={size}

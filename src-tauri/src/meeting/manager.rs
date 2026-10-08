@@ -62,6 +62,7 @@ pub struct StartMeetingInput {
 #[serde(rename_all = "camelCase")]
 pub struct MeetingRecordingState {
     pub active: bool,
+    pub elapsed_seconds: u64,
     pub meeting: Option<Meeting>,
     pub microphone: Option<RecordingState>,
     pub system: Option<RecordingState>,
@@ -1066,6 +1067,7 @@ impl MeetingManager {
         );
         Ok(MeetingRecordingState {
             active: false,
+            elapsed_seconds: meeting.duration_seconds.max(0) as u64,
             meeting: Some(meeting),
             errors,
             warnings: session.warnings.clone(),
@@ -1294,6 +1296,7 @@ impl MeetingManager {
         let Some(session) = session else {
             return Ok(MeetingRecordingState {
                 active: false,
+                elapsed_seconds: 0,
                 meeting: None,
                 microphone: None,
                 system: None,
@@ -1327,6 +1330,13 @@ impl MeetingManager {
         }
         Ok(MeetingRecordingState {
             active,
+            elapsed_seconds: if active {
+                session.started.elapsed().as_secs()
+            } else {
+                meeting
+                    .as_ref()
+                    .map_or(0, |meeting| meeting.duration_seconds.max(0) as u64)
+            },
             meeting,
             errors,
             warnings: session.warnings,
@@ -1836,6 +1846,55 @@ mod tests {
             "meeting-recorder-mic-manager-{}-{nanos}",
             std::process::id()
         ))
+    }
+
+    #[test]
+    fn recording_elapsed_is_monotonic_and_stops_at_persisted_duration() {
+        let root = root();
+        let storage = StorageManager::initialize_in(&root).unwrap();
+        let database = Database::initialize(&storage).unwrap();
+        let manager = MeetingManager::new(database, storage.clone());
+        let idle = serde_json::to_value(manager.get_recording_state().unwrap()).unwrap();
+        assert_eq!(
+            idle.get("elapsedSeconds").and_then(|value| value.as_u64()),
+            Some(0)
+        );
+        let mut input = start_input(false, false);
+        input.video_enabled = true;
+        input.video_source_id = Some("monitor:1".into());
+        manager
+            .start_meeting_with_errors(
+                input,
+                None,
+                None,
+                (None, None),
+                |_, _, _| panic!("Audio disabled"),
+                |id, _, _| {
+                    Ok(crate::video::VideoRecorder::fake(
+                        storage.get_video_path(id).unwrap(),
+                        id.to_owned(),
+                    ))
+                },
+            )
+            .unwrap();
+        manager
+            .state
+            .lock()
+            .unwrap()
+            .current_meeting
+            .as_mut()
+            .unwrap()
+            .started -= std::time::Duration::from_secs(65);
+        let active = serde_json::to_value(manager.get_recording_state().unwrap()).unwrap();
+        assert!(active["elapsedSeconds"].as_u64().unwrap() >= 65);
+        manager.shutdown(true).unwrap();
+        let stopped = serde_json::to_value(manager.get_recording_state().unwrap()).unwrap();
+        assert_eq!(
+            stopped["elapsedSeconds"],
+            stopped["meeting"]["durationSeconds"]
+        );
+        drop(manager);
+        fs::remove_dir_all(root).unwrap();
     }
 
     fn start_input(microphone: bool, system: bool) -> StartMeetingInput {

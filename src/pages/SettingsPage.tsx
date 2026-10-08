@@ -64,9 +64,9 @@ export function SettingsPage() {
   const load = useCallback(async (isMounted: () => boolean) => {
     setLoading(true);
     const [preferences, microphone, output] = await Promise.allSettled([
-      getSettings(),
-      listInputDevices(),
-      listOutputDevices(),
+      Promise.resolve().then(getSettings),
+      Promise.resolve().then(listInputDevices),
+      Promise.resolve().then(listOutputDevices),
     ]);
     if (!isMounted()) return;
     if (preferences.status === "fulfilled") {

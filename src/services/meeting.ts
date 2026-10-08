@@ -87,6 +87,7 @@ export type AudioSourceState = {
 
 export type MeetingRecordingState = {
   active: boolean;
+  elapsedSeconds?: number;
   meeting: {
     id: string;
     title: string;

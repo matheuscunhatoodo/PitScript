@@ -7,8 +7,11 @@ import { MeetingPage } from "../pages/MeetingPage";
 import { NewRecordingPage } from "../pages/NewRecordingPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import "../styles/app.css";
+import { useRecording } from "../hooks/useRecording";
+import { RecordingBar } from "../components/RecordingBar";
 
 export default function App() {
+  const recording = useRecording();
   const [page, setPage] = useState<Page>("home");
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(
     null,
@@ -36,14 +39,31 @@ export default function App() {
   }
 
   return (
-    <AppShell page={page} onNavigate={setPage}>
+    <AppShell
+      page={page}
+      onNavigate={setPage}
+      recording={!!recording.capture?.active}
+    >
+      {recording.error && page !== "new" && (
+        <div className="inline-notice" role="alert">
+          {recording.error}
+          <button
+            className="text-button"
+            onClick={() => void recording.refresh()}
+          >
+            Atualizar estado
+          </button>
+        </div>
+      )}
       {page === "home" && (
         <HomePage
           onNewRecording={() => setPage("new")}
           onOpenMeeting={openMeeting}
         />
       )}
-      {page === "new" && <NewRecordingPage onOpenMeeting={openMeeting} />}
+      {page === "new" && (
+        <NewRecordingPage onOpenMeeting={openMeeting} recording={recording} />
+      )}
       {page === "meeting" && selectedMeetingId && (
         <MeetingPage
           key={selectedMeetingId}
@@ -52,6 +72,12 @@ export default function App() {
         />
       )}
       {page === "settings" && <SettingsPage />}
+      <RecordingBar
+        recording={recording}
+        onShow={() => setPage("new")}
+        onOpenMeeting={openMeeting}
+        showStop={page !== "new"}
+      />
     </AppShell>
   );
 }

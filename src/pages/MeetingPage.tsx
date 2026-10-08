@@ -1,13 +1,7 @@
-import {
-  Fragment,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Icon } from "../components/Icon";
-import { StatusBadge } from "../components/StatusBadge";
+import { AudioPlayer } from "../components/AudioPlayer";
+import { TranscriptView } from "../components/TranscriptView";
 import {
   copyTranscript,
   exportTranscript,
@@ -17,6 +11,7 @@ import {
   getMeetingDiarization,
   diarizeMeeting,
   cancelTranscription,
+  transcribeMeeting,
 } from "../services/meeting";
 import type { RecordedMeeting, DiarizationState } from "../types/meeting";
 import {
@@ -24,6 +19,8 @@ import {
   formatDuration,
   formatMeetingDate,
   formatSegmentTranscript,
+  buildTranscriptBlocks,
+  meetingProgressLabel,
 } from "../utils/meeting";
 
 const transcriptMessages: Record<
@@ -61,7 +58,11 @@ export function MeetingPage({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
-  const activeMatch = useRef<HTMLElement | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [seekRequest, setSeekRequest] = useState<{
+    seconds: number;
+    revision: number;
+  } | null>(null);
   const text = useMemo(
     () =>
       diarization?.segments.length && !showTraditional
@@ -69,11 +70,24 @@ export function MeetingPage({
         : (meeting?.transcription ?? ""),
     [diarization?.segments, meeting?.transcription, showTraditional],
   );
+  const visibleSegments = useMemo(
+    () => (!showTraditional ? (diarization?.segments ?? []) : []),
+    [showTraditional, diarization?.segments],
+  );
+  const searchText = useMemo(
+    () =>
+      visibleSegments.length
+        ? buildTranscriptBlocks(visibleSegments)
+            .map((block) => block.searchText)
+            .join("\n\n")
+        : text,
+    [visibleSegments, text],
+  );
   const hasTranscript =
     meeting?.transcriptionStatus === "completed" && !!text.trim();
   const matches = useMemo(
-    () => findTranscriptMatches(text, deferredQuery),
-    [text, deferredQuery],
+    () => findTranscriptMatches(searchText, deferredQuery),
+    [searchText, deferredQuery],
   );
   const selectedMatch = matches.length ? matchIndex % matches.length : 0;
 
@@ -81,6 +95,8 @@ export function MeetingPage({
     let mounted = true;
     async function load() {
       setLoading(true);
+      setCurrentTime(0);
+      setSeekRequest(null);
       setLoadError(null);
       setAudioError(null);
       setAudioUrl(null);
@@ -137,17 +153,28 @@ export function MeetingPage({
     let timer: number;
     async function refresh() {
       try {
-        const [saved, identified] = await Promise.all([
+        const [saved, identified] = await Promise.allSettled([
           getMeeting(id),
           getMeetingDiarization(id),
         ]);
-        if (mounted && saved) {
-          setMeeting(saved);
-          setDiarization(identified);
+        if (mounted) {
+          if (saved.status === "fulfilled" && saved.value)
+            setMeeting(saved.value);
+          if (identified.status === "fulfilled")
+            setDiarization(identified.value);
+          else
+            setDiarizationError(
+              "Não foi possível atualizar os segmentos. A transcrição tradicional continua disponível.",
+            );
+          if (saved.status === "rejected")
+            setActionError(
+              "Não foi possível atualizar a transcrição. Tentaremos novamente.",
+            );
           if (
-            saved.transcriptionStatus === "processing" ||
-            identified.status === "processing" ||
-            identified.status === "pending"
+            saved.status === "rejected" ||
+            saved.value?.transcriptionStatus === "processing" ||
+            (identified.status === "fulfilled" &&
+              ["processing", "pending"].includes(identified.value.status))
           )
             timer = window.setTimeout(() => void refresh(), 2000);
         }
@@ -164,10 +191,6 @@ export function MeetingPage({
       window.clearTimeout(timer);
     };
   }, [id, processing, revision]);
-
-  useEffect(() => {
-    activeMatch.current?.scrollIntoView({ block: "nearest" });
-  }, [selectedMatch, deferredQuery, text]);
 
   async function runAction(action: () => Promise<string>) {
     if (busy) return;
@@ -186,12 +209,9 @@ export function MeetingPage({
   const date = meeting ? formatMeetingDate(meeting.startedAt) : null;
   return (
     <div className="page page--detail">
-      <button
-        className="text-button back-button"
-        type="button"
-        onClick={onBack}
-      >
-        <Icon name="back" size={17} /> Voltar para reuniões
+      <button className="text-button back-button" onClick={onBack}>
+        <Icon name="back" size={19} />
+        Voltar à biblioteca
       </button>
       {loading ? (
         <p role="status">Carregando reunião…</p>
@@ -206,238 +226,159 @@ export function MeetingPage({
               <h1>{meeting.title}</h1>
               <div className="detail-meta">
                 <span>
-                  <Icon name="calendar" size={17} /> {date?.date} às{" "}
-                  {date?.time}
+                  {date?.date} · {date?.time}
                 </span>
-                <span>
-                  <Icon name="clock" size={17} />{" "}
-                  {formatDuration(meeting.durationSeconds)}
+                <span>{formatDuration(meeting.durationSeconds)}</span>
+                <span
+                  className={
+                    hasTranscript
+                      ? "meeting-status meeting-status--ready"
+                      : "meeting-status meeting-status--idle"
+                  }
+                >
+                  <span className="status-dot" />
+                  {hasTranscript
+                    ? "Transcrição pronta"
+                    : meetingProgressLabel(meeting)}
                 </span>
-                <StatusBadge status={meeting.status} />
               </div>
             </div>
-          </header>
-          <div className="detail-layout">
-            <section
-              className="detail-panel audio-panel"
-              aria-labelledby="audio-title"
+            <button
+              className="button button--outline"
+              disabled={busy}
+              onClick={() =>
+                void runAction(async () => {
+                  await openMeetingFolder(id);
+                  return "Pasta aberta no Explorador de Arquivos.";
+                })
+              }
             >
-              <div className="panel-title">
-                <span className="panel-title__icon">
-                  <Icon name="speaker" size={20} />
-                </span>
-                <div>
-                  <h2 id="audio-title">Áudio da reunião</h2>
-                  <p>Reprodução local</p>
-                </div>
-              </div>
-              {audioUrl ? (
-                <audio
-                  className="meeting-audio"
-                  controls
-                  preload="metadata"
-                  src={audioUrl}
-                  aria-label="Áudio da reunião"
-                  onError={() =>
-                    setAudioError(
-                      "Não foi possível reproduzir o áudio. Verifique os arquivos na pasta da reunião.",
+              <Icon name="folder" size={20} />
+              Abrir pasta
+            </button>
+          </header>
+          {audioError && (
+            <p className="inline-notice" role="alert">
+              {audioError}
+            </p>
+          )}
+          {["failed", "failed_partial"].includes(meeting.status) && (
+            <p className="inline-notice" role="alert">
+              A gravação teve uma falha. O áudio e o texto disponíveis foram
+              preservados. Consulte os arquivos na pasta da reunião.
+            </p>
+          )}
+          {!audioUrl && (
+            <p className="panel-help">
+              Nenhum áudio reproduzível foi encontrado. Consulte a pasta da
+              reunião.
+            </p>
+          )}
+          <section aria-labelledby="transcript-title">
+            <div className="transcript-toolbar">
+              <h2 id="transcript-title">Transcrição</h2>
+              <div className="transcript-actions">
+                <button
+                  className="button button--quiet"
+                  disabled={busy || !hasTranscript}
+                  onClick={() =>
+                    void runAction(async () => {
+                      await copyTranscript(text);
+                      return "Texto copiado.";
+                    })
+                  }
+                >
+                  <Icon name="copy" size={19} />
+                  Copiar texto
+                </button>
+                <button
+                  className="button button--primary"
+                  disabled={busy || !hasTranscript}
+                  onClick={() =>
+                    void runAction(async () =>
+                      (await exportTranscript(id, showTraditional))
+                        ? "TXT exportado."
+                        : "Exportação cancelada.",
                     )
                   }
-                />
-              ) : (
-                <p className="panel-help">
-                  {audioError ??
-                    "Nenhum arquivo de áudio válido foi encontrado para esta reunião."}
-                </p>
-              )}
-              {audioUrl && audioError && (
-                <p role="alert" className="panel-help">
-                  {audioError}
-                </p>
-              )}
-              <div className="source-summary">
-                <h3>Fontes habilitadas na gravação</h3>
-                <span
-                  className={
-                    meeting.microphoneEnabled ? "" : "source-summary__off"
-                  }
                 >
-                  <Icon name="mic" size={17} /> Microfone
-                </span>
-                <span
-                  className={
-                    meeting.systemAudioEnabled ? "" : "source-summary__off"
-                  }
-                >
-                  <Icon name="speaker" size={17} /> Áudio do computador
-                </span>
+                  <Icon name="file" size={19} />
+                  Exportar TXT
+                </button>
               </div>
-              <button
-                className="button button--outline"
-                type="button"
-                disabled={busy}
-                onClick={() =>
-                  void runAction(async () => {
-                    await openMeetingFolder(id);
-                    return "Pasta aberta no Explorador de Arquivos.";
-                  })
-                }
+            </div>
+            {(diarization?.error || diarizationError) && (
+              <div className="inline-notice" role="alert">
+                <strong>O texto tradicional continua disponível.</strong>
+                <details>
+                  <summary>Detalhes da identificação de participantes</summary>
+                  {diarization?.error ?? diarizationError}
+                </details>
+              </div>
+            )}
+            {processing && (
+              <div
+                className="inline-notice inline-notice--transcription"
+                role="status"
               >
-                Abrir pasta da reunião
-              </button>
-            </section>
-            <section
-              className="detail-panel transcript-panel"
-              aria-labelledby="transcript-title"
-            >
-              <div className="panel-title panel-title--between">
-                <div className="panel-title__group">
-                  <span className="panel-title__icon">
-                    <Icon name="file" size={20} />
-                  </span>
-                  <div>
-                    <h2 id="transcript-title">Transcrição</h2>
-                    <p>Texto salvo localmente</p>
-                  </div>
-                </div>
-                <div className="transcript-actions">
-                  <button
-                    className="button button--quiet"
-                    type="button"
-                    disabled={!hasTranscript || busy}
-                    onClick={() =>
-                      void runAction(async () => {
-                        await copyTranscript(text);
-                        return "Transcrição copiada.";
-                      })
-                    }
-                  >
-                    Copiar texto
-                  </button>
-                  <button
-                    className="button button--quiet"
-                    type="button"
-                    disabled={!hasTranscript || busy}
-                    onClick={() =>
-                      void runAction(async () =>
-                        (await exportTranscript(id, showTraditional))
-                          ? "TXT exportado."
-                          : "Exportação cancelada.",
-                      )
-                    }
-                  >
-                    <Icon name="download" size={17} /> Exportar TXT
-                  </button>
-                </div>
+                <span>
+                  {diarization?.stage === "diarization"
+                    ? "Identificando participantes"
+                    : diarization?.stage === "source_transcription"
+                      ? "Preparando texto por fonte"
+                      : "Transcrevendo localmente"}
+                  {diarization?.status === "processing"
+                    ? " · " + diarization.progress + "%"
+                    : ""}
+                </span>
+                {diarization?.status === "processing" && (
+                  <progress
+                    value={diarization.progress}
+                    max={100}
+                    aria-label="Progresso da identificação de participantes"
+                  />
+                )}
+                <button
+                  className="text-button"
+                  disabled={busy}
+                  onClick={() =>
+                    void runAction(async () => {
+                      await cancelTranscription(id);
+                      return "Cancelamento solicitado. O áudio e o texto já salvo serão preservados.";
+                    })
+                  }
+                >
+                  Cancelar processamento
+                </button>
               </div>
-              <div className="diarization-status">
-                {!!diarization?.segments.length && (
-                  <button
-                    className="text-button"
-                    type="button"
-                    onClick={() => {
-                      setShowTraditional((value) => !value);
+            )}
+            {hasTranscript ? (
+              <>
+                <div className="search-field transcript-search">
+                  <Icon name="search" size={22} />
+                  <label className="sr-only" htmlFor="transcript-search">
+                    Pesquisar na transcrição
+                  </label>
+                  <input
+                    id="transcript-search"
+                    type="search"
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
                       setMatchIndex(0);
                     }}
-                  >
-                    {showTraditional
-                      ? "Ver participantes"
-                      : "Ver texto tradicional"}
-                  </button>
-                )}
-                {diarization?.status === "completed" && (
-                  <p className="panel-help">
-                    Locutores estimados por reunião. Trechos incertos usam
-                    “Participantes”.
-                  </p>
-                )}
-                {(diarization?.status === "processing" ||
-                  diarization?.status === "pending") && (
-                  <div
-                    className="inline-notice inline-notice--transcription"
-                    role="status"
-                  >
-                    <span>
-                      {diarization.status === "pending"
-                        ? "Aguardando a transcrição tradicional"
-                        : diarization.stage === "source_transcription"
-                          ? "Preparando texto por fonte"
-                          : diarization.stage === "diarization"
-                            ? "Identificando participantes"
-                            : "Preparando e alinhando segmentos"}{" "}
-                      · {diarization.progress}%
-                    </span>
-                    <progress
-                      value={diarization.progress}
-                      max={100}
-                      aria-label="Progresso da identificação de participantes"
-                    />
-                    <button
-                      className="button button--outline"
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        void runAction(async () => {
-                          await cancelTranscription(id);
-                          return "Cancelamento solicitado. O texto já salvo será preservado.";
-                        })
-                      }
-                    >
-                      Cancelar processamento
-                    </button>
-                  </div>
-                )}
-                {(diarization?.error || diarizationError) && (
-                  <p className="inline-notice" role="alert">
-                    {diarization?.error ?? diarizationError}
-                  </p>
-                )}
-                {meeting.transcriptionStatus === "completed" &&
-                  !processing &&
-                  diarization?.status !== "completed" && (
-                    <button
-                      className="button button--outline"
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        void runAction(async () => {
-                          setDiarization(await diarizeMeeting(id));
-                          return "Identificação de participantes iniciada localmente.";
-                        })
-                      }
-                    >
-                      {diarization?.status === "failed" ||
-                      diarization?.status === "cancelled"
-                        ? "Tentar identificar participantes novamente"
-                        : "Identificar participantes"}
-                    </button>
-                  )}
-              </div>
-              {hasTranscript ? (
-                <>
-                  <label className="search-field">
-                    <Icon name="search" size={20} />
-                    <span className="sr-only">Pesquisar na transcrição</span>
-                    <input
-                      type="search"
-                      value={query}
-                      onChange={(event) => {
-                        setQuery(event.target.value);
-                        setMatchIndex(0);
-                      }}
-                      placeholder="Pesquisar na transcrição…"
-                    />
-                  </label>
+                    placeholder="Pesquisar na transcrição"
+                  />
                   {deferredQuery.trim() && (
                     <div className="transcript-search-navigation">
                       <span role="status">
                         {matches.length
-                          ? `${selectedMatch + 1} de ${matches.length} resultados`
+                          ? selectedMatch + 1 + " de " + matches.length
                           : "Nenhum resultado"}
                       </span>
                       <button
-                        type="button"
-                        className="text-button"
+                        className="icon-button icon-button--previous"
+                        aria-label="Resultado anterior"
                         disabled={!matches.length}
                         onClick={() =>
                           setMatchIndex(
@@ -446,65 +387,112 @@ export function MeetingPage({
                           )
                         }
                       >
-                        Anterior
+                        <Icon name="arrow" size={19} />
                       </button>
                       <button
-                        type="button"
-                        className="text-button"
+                        className="icon-button"
+                        aria-label="Próximo resultado"
                         disabled={!matches.length}
                         onClick={() =>
                           setMatchIndex((selectedMatch + 1) % matches.length)
                         }
                       >
-                        Próximo
+                        <Icon name="arrow" size={19} />
                       </button>
                     </div>
                   )}
-                  <div
-                    className="transcript-text"
-                    tabIndex={0}
-                    aria-label="Texto da transcrição"
-                  >
-                    {matches.length ? (
-                      <>
-                        {matches.map((match, index) => (
-                          <Fragment key={match.start}>
-                            {text.slice(
-                              index ? matches[index - 1].end : 0,
-                              match.start,
-                            )}
-                            <mark
-                              ref={
-                                index === selectedMatch
-                                  ? activeMatch
-                                  : undefined
-                              }
-                              className={
-                                index === selectedMatch
-                                  ? "transcript-match--active"
-                                  : ""
-                              }
-                            >
-                              {text.slice(match.start, match.end)}
-                            </mark>
-                          </Fragment>
-                        ))}
-                        {text.slice(matches[matches.length - 1].end)}
-                      </>
-                    ) : (
-                      text
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="transcript-empty">
-                  <Icon name="file" size={25} />
-                  <strong>Transcrição ainda não disponível</strong>
-                  <span>{transcriptMessages[meeting.transcriptionStatus]}</span>
                 </div>
+                <TranscriptView
+                  segments={visibleSegments}
+                  text={text}
+                  matches={matches}
+                  selectedMatch={selectedMatch}
+                  currentTime={currentTime}
+                  onSeek={
+                    audioUrl
+                      ? (seconds) =>
+                          setSeekRequest((request) => ({
+                            seconds,
+                            revision: (request?.revision ?? 0) + 1,
+                          }))
+                      : undefined
+                  }
+                />
+              </>
+            ) : (
+              <div className="transcript-empty">
+                <Icon name="file" size={27} />
+                <strong>Transcrição ainda não disponível</strong>
+                <span>{transcriptMessages[meeting.transcriptionStatus]}</span>
+                {!processing && (
+                  <button
+                    className="button button--outline"
+                    disabled={busy}
+                    onClick={() =>
+                      void runAction(async () => {
+                        await transcribeMeeting(id);
+                        setRevision((value) => value + 1);
+                        return "Transcrição solicitada localmente.";
+                      })
+                    }
+                  >
+                    Transcrever áudio salvo
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+          {!!diarization?.segments.length && (
+            <div className="transcript-options">
+              <button
+                className="text-button"
+                onClick={() => {
+                  setShowTraditional((value) => !value);
+                  setMatchIndex(0);
+                }}
+              >
+                {showTraditional
+                  ? "Ver participantes"
+                  : "Ver texto tradicional"}
+              </button>
+              <span>
+                Locutores estimados. Trechos incertos usam “Participantes”.
+              </span>
+            </div>
+          )}
+          <footer className="detail-footer">
+            {meeting.transcriptionStatus === "completed" &&
+              !processing &&
+              diarization?.status !== "completed" && (
+                <button
+                  className="text-button"
+                  disabled={busy}
+                  onClick={() =>
+                    void runAction(async () => {
+                      setDiarization(await diarizeMeeting(id));
+                      return "Identificação de participantes iniciada localmente.";
+                    })
+                  }
+                >
+                  Identificar participantes
+                </button>
               )}
-            </section>
-          </div>
+            <button
+              className="text-button"
+              disabled={busy}
+              onClick={() => setRevision((value) => value + 1)}
+            >
+              Atualizar reunião
+            </button>
+          </footer>
+          {audioUrl && (
+            <AudioPlayer
+              key={audioUrl}
+              url={audioUrl}
+              onTimeChange={setCurrentTime}
+              seekRequest={seekRequest}
+            />
+          )}
         </>
       )}
       {feedback && (
@@ -517,16 +505,6 @@ export function MeetingPage({
           {actionError}
         </p>
       )}
-      <div className="detail-footer">
-        <button
-          className="text-button"
-          type="button"
-          disabled={loading || busy}
-          onClick={() => setRevision((value) => value + 1)}
-        >
-          Atualizar reunião
-        </button>
-      </div>
     </div>
   );
 }

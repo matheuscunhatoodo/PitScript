@@ -1,175 +1,223 @@
 import { useEffect, useState } from "react";
+import { isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type { RecordedMeeting } from "../types/meeting";
 import { listMeetings } from "../services/meeting";
-import { formatDuration, formatMeetingDate } from "../utils/meeting";
+import {
+  formatDuration,
+  formatMeetingDate,
+  groupMeetingsByDay,
+  meetingProgressLabel,
+} from "../utils/meeting";
 import { Icon } from "../components/Icon";
-import { StatusBadge } from "../components/StatusBadge";
 
-type HomePageProps = {
+export function HomePage({
+  onNewRecording,
+  onOpenMeeting,
+}: {
   onNewRecording: () => void;
   onOpenMeeting: (id: string) => void;
-};
-
-export function HomePage({ onNewRecording, onOpenMeeting }: HomePageProps) {
+}) {
   const [query, setQuery] = useState("");
   const [meetings, setMeetings] = useState<RecordedMeeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
-
   useEffect(() => {
     let mounted = true;
+    let timer: number | undefined;
+    let fetching = false;
     async function load() {
-      setLoading(true);
-      setError(null);
+      if (fetching) return;
+      fetching = true;
+      window.clearTimeout(timer);
       try {
         const saved = await listMeetings();
-        if (mounted) setMeetings(saved);
-      } catch (cause) {
-        if (mounted) setError(String(cause));
+        if (!mounted) return;
+        setMeetings(saved);
+        setError(null);
+        if (
+          saved.some(
+            (m) =>
+              m.status === "recording" ||
+              m.status === "processing" ||
+              m.transcriptionStatus === "processing",
+          )
+        )
+          timer = window.setTimeout(() => void load(), 2000);
+      } catch {
+        if (mounted)
+          setError(
+            "Não foi possível carregar o histórico. Suas reuniões continuam salvas neste computador.",
+          );
       } finally {
+        fetching = false;
         if (mounted) setLoading(false);
       }
     }
     void load();
+    const subscriptions = isTauri()
+      ? Promise.allSettled(
+          ["meeting-lifecycle-changed", "transcription-finished"].map((event) =>
+            listen(event, () => void load()),
+          ),
+        )
+      : Promise.resolve([]);
     return () => {
       mounted = false;
+      window.clearTimeout(timer);
+      void subscriptions.then((results) =>
+        results.forEach((r) => {
+          if (r.status === "fulfilled") r.value();
+        }),
+      );
     };
   }, [revision]);
-  const filteredMeetings = meetings.filter((meeting) =>
-    meeting.title
+  const filtered = meetings.filter((m) =>
+    m.title
       .toLocaleLowerCase("pt-BR")
       .includes(query.trim().toLocaleLowerCase("pt-BR")),
   );
-
   return (
     <div className="page page--home">
       <header className="page-header">
         <div>
-          <h1>Suas reuniões</h1>
-          <p>Encontre e acompanhe suas gravações em um só lugar.</p>
+          <h1>Biblioteca</h1>
+          <p>Suas reuniões, neste computador.</p>
         </div>
-        <button
-          className="button button--primary"
-          type="button"
-          onClick={onNewRecording}
-        >
-          <Icon name="plus" size={19} />
+        <button className="button button--primary" onClick={onNewRecording}>
+          <Icon name="plus" size={21} />
           Nova gravação
         </button>
       </header>
-
-      <section className="meeting-section" aria-labelledby="meeting-list-title">
-        <div className="section-heading">
-          <div>
-            <h2 id="meeting-list-title">Histórico</h2>
-            <p>Reuniões recentes</p>
+      <label className="search-field">
+        <Icon name="search" size={22} />
+        <span className="sr-only">Buscar reuniões</span>
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar reuniões"
+        />
+      </label>
+      <section className="meeting-list" aria-label="Reuniões salvas">
+        <div className="meeting-list__header" aria-hidden="true">
+          <span>Reunião</span>
+          <span>Duração</span>
+          <span>Transcrição</span>
+          <span />
+        </div>
+        {loading ? (
+          <div className="empty-state" role="status">
+            Carregando reuniões…
           </div>
-          <div className="history-actions">
-            <span className="count">{meetings.length} reuniões</span>
+        ) : error ? (
+          <div className="empty-state" role="alert">
+            <strong>{error}</strong>
             <button
-              className="text-button"
-              type="button"
-              disabled={loading}
-              onClick={() => setRevision((value) => value + 1)}
+              className="button button--outline"
+              onClick={() => setRevision((v) => v + 1)}
             >
-              Atualizar
+              Tentar novamente
             </button>
           </div>
-        </div>
-
-        <label className="search-field">
-          <Icon name="search" size={20} />
-          <span className="sr-only">Buscar reuniões</span>
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar reuniões..."
-          />
-        </label>
-
-        <div className="meeting-list">
-          <div className="meeting-list__header" aria-hidden="true">
-            <span>Reunião</span>
-            <span>Data</span>
-            <span>Duração</span>
-            <span>Status</span>
-            <span>Fontes</span>
-            <span />
-          </div>
-          {loading ? (
-            <div className="empty-state" role="status">
-              Carregando reuniões…
-            </div>
-          ) : error ? (
-            <div className="empty-state" role="alert">
-              <strong>Não foi possível carregar o histórico</strong>
-              <span>{error}</span>
-            </div>
-          ) : filteredMeetings.length > 0 ? (
-            filteredMeetings.map((meeting) => {
-              const { date, time } = formatMeetingDate(meeting.startedAt);
-              return (
-                <div className="meeting-row" key={meeting.id}>
-                  <div className="meeting-row__title">
-                    <button
-                      type="button"
-                      onClick={() => onOpenMeeting(meeting.id)}
-                    >
-                      {meeting.title}
-                    </button>
-                    <span>Ver detalhes</span>
-                  </div>
-                  <div className="meeting-row__date">
-                    {date}
-                    <small>{time}</small>
-                  </div>
-                  <span className="meeting-row__duration">
-                    {formatDuration(meeting.durationSeconds)}
-                  </span>
-                  <StatusBadge status={meeting.status} />
-                  <div className="source-icons">
-                    {(meeting.microphoneEnabled ||
-                      meeting.systemAudioEnabled) && (
-                      <span title="Áudio" aria-label="Áudio">
-                        <Icon name="speaker" size={18} />
-                      </span>
-                    )}
-                    {meeting.videoEnabled && (
-                      <span title="Vídeo" aria-label="Vídeo">
-                        <Icon name="screen" size={18} />
-                      </span>
-                    )}
-                  </div>
+        ) : filtered.length ? (
+          groupMeetingsByDay(filtered).map((group) => (
+            <div key={group.key} className="meeting-day">
+              <h2>{group.label}</h2>
+              {group.meetings.map((meeting) => {
+                const label = meetingProgressLabel(meeting);
+                const tone =
+                  meeting.status === "failed" ||
+                  meeting.status === "failed_partial" ||
+                  meeting.transcriptionStatus === "failed"
+                    ? "warning"
+                    : meeting.status === "recording"
+                      ? "recording"
+                      : label === "Pronta"
+                        ? "ready"
+                        : meeting.transcriptionStatus === "processing" ||
+                            meeting.status === "processing"
+                          ? "processing"
+                          : "idle";
+                const sources = [
+                  meeting.microphoneEnabled && "Microfone",
+                  meeting.systemAudioEnabled && "computador",
+                  meeting.videoEnabled && "vídeo",
+                ]
+                  .filter(Boolean)
+                  .join(" e ");
+                return (
                   <button
-                    className="meeting-row__open"
-                    type="button"
-                    aria-label={`Abrir ${meeting.title}`}
+                    className="meeting-row"
+                    key={meeting.id}
                     onClick={() => onOpenMeeting(meeting.id)}
+                    aria-label={`Abrir ${meeting.title}`}
                   >
-                    <Icon name="arrow" size={18} />
+                    <span className="meeting-row__title">
+                      <strong>{meeting.title}</strong>
+                      <span className="meeting-row__meta">
+                        {formatMeetingDate(meeting.startedAt).time}
+                        {meeting.microphoneEnabled && (
+                          <Icon name="mic" size={15} />
+                        )}
+                        {meeting.systemAudioEnabled && (
+                          <Icon name="screen" size={16} />
+                        )}
+                        {meeting.videoEnabled && <Icon name="file" size={15} />}
+                        <span>{sources || "Sem fontes"}</span>
+                      </span>
+                    </span>
+                    <span className="meeting-row__duration">
+                      {formatDuration(meeting.durationSeconds)}
+                    </span>
+                    <span className={`meeting-status meeting-status--${tone}`}>
+                      <span className="status-dot" />
+                      {label}
+                    </span>
+                    <Icon name="arrow" size={19} />
                   </button>
-                </div>
-              );
-            })
-          ) : (
-            <div className="empty-state">
-              <Icon name="search" size={26} />
-              <strong>
-                {meetings.length
-                  ? "Nenhuma reunião encontrada"
-                  : "Você ainda não tem reuniões salvas"}
-              </strong>
-              <span>
-                {meetings.length
-                  ? "Tente buscar por outro nome."
-                  : "Inicie uma gravação para criar sua primeira reunião."}
-              </span>
+                );
+              })}
             </div>
-          )}
-        </div>
+          ))
+        ) : (
+          <div className="empty-state">
+            <Icon name={query ? "search" : "folder"} size={32} />
+            <strong>
+              {meetings.length
+                ? "Nenhuma reunião encontrada"
+                : "Sua primeira reunião começa aqui"}
+            </strong>
+            <span>
+              {meetings.length
+                ? "Tente buscar por outro nome."
+                : "Grave, ouça e consulte a transcrição neste computador."}
+            </span>
+            {!meetings.length && (
+              <button
+                className="button button--primary"
+                onClick={onNewRecording}
+              >
+                Nova gravação
+              </button>
+            )}
+          </div>
+        )}
       </section>
+      <footer className="library-footer">
+        <span>
+          {meetings.length}{" "}
+          {meetings.length === 1 ? "reunião salva" : "reuniões salvas"}
+        </span>
+        <button
+          className="text-button"
+          disabled={loading}
+          onClick={() => setRevision((v) => v + 1)}
+        >
+          Atualizar
+        </button>
+      </footer>
     </div>
   );
 }

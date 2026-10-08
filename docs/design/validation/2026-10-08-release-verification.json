@@ -1,0 +1,36 @@
+{
+    "url":  "https://github.com/matheuscunhatoodo/PitScript/releases/tag/v0.1.1-rc.1",
+    "tag":  "v0.1.1-rc.1",
+    "commit":  "62b9bc297611337b597b40d57ec3b916bc15fc28",
+    "publicChecks":  [
+                         {
+                             "name":  "MeetingRecorder-0.1.1-x64.msi",
+                             "http":  200,
+                             "bytes":  311996416,
+                             "sha256":  "65f280962d711da249a49ad40182b1f1709697fb202d9cffb7d4a57cd977127c",
+                             "url":  "https://github.com/matheuscunhatoodo/PitScript/releases/download/v0.1.1-rc.1/MeetingRecorder-0.1.1-x64.msi"
+                         },
+                         {
+                             "name":  "MeetingRecorder-Setup.exe",
+                             "http":  200,
+                             "bytes":  305600737,
+                             "sha256":  "55544d2cd3923d8eac1204769c72e504d82d487188a2046f3474085c1e0fcedb",
+                             "url":  "https://github.com/matheuscunhatoodo/PitScript/releases/download/v0.1.1-rc.1/MeetingRecorder-Setup.exe"
+                         },
+                         {
+                             "name":  "resources-manifest.json",
+                             "http":  200,
+                             "bytes":  10080,
+                             "sha256":  "1c13349900561a5034ae072e1926d5a9cfa66fc5adda39f3076f109142139e9c",
+                             "url":  "https://github.com/matheuscunhatoodo/PitScript/releases/download/v0.1.1-rc.1/resources-manifest.json"
+                         },
+                         {
+                             "name":  "SHA256SUMS.txt",
+                             "http":  200,
+                             "bytes":  278,
+                             "sha256":  "17e620c6889424cf9c8c615d432cdb2c2b88d2620e11cacc96f1f4e4eb169ddf",
+                             "url":  "https://github.com/matheuscunhatoodo/PitScript/releases/download/v0.1.1-rc.1/SHA256SUMS.txt"
+                         }
+                     ],
+    "verification":  "Anonymous HEAD for both installers; downloaded manifests/checksums; GitHub SHA256 digests match all four local files"
+}

@@ -54,7 +54,7 @@ Produces: elapsedSeconds: u64 aditivo no get_recording_state; versão 0.1.1 e ja
 Files: docs/UX_RELEASE_REPORT.md e notas da release; artifacts ignorados releases/0.1.1/.
 Consumes: commits validados, instaladores novos e modelos/runtimes existentes.
 Produces: main atualizado e release pública v0.1.1-rc.1 com assets e hashes.
-- [ ] Conferir arquivos staged/ausência de dados privados; merge fast-forward/push autorizados.
-- [ ] Extrair MSI e conferir recursos, iniciar binário com perfil sintético; atualizar relatório com evidências.
-- [ ] Criar draft, anexar EXE/MSI/manifests/SHA256SUMS, validar hashes antes de publicar prerelease.
-- [ ] Verificar release/tag, download anônimo e integridade; relatar link e pendências.
+- [x] Conferir arquivos staged/ausência de dados privados; merge fast-forward/push autorizados.
+- [x] Extrair MSI e conferir recursos, iniciar binário com perfil sintético; atualizar relatório com evidências.
+- [x] Criar draft, anexar EXE/MSI/manifests/SHA256SUMS, validar hashes antes de publicar prerelease.
+- [x] Verificar release/tag, download anônimo e integridade; relatar link e pendências.

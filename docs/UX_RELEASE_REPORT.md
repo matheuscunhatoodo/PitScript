@@ -108,4 +108,4 @@ A comparação integral do executável extraído confirmou diferença exclusivam
 
 Avisos do ambiente: informação do linker MSVC; cache incremental sem hardlinks nos testes; recomendação Tauri sobre identificador `.app` para macOS. Não são erros de Clippy; o alvo é Windows e a identidade foi preservada para upgrade.
 
-Destino da publicação: [v0.1.1-rc.1](https://github.com/matheuscunhatoodo/PitScript/releases/tag/v0.1.1-rc.1), como pré-release. Publicação e downloads públicos serão confirmados na conclusão da etapa.
+Release publicada: [v0.1.1-rc.1](https://github.com/matheuscunhatoodo/PitScript/releases/tag/v0.1.1-rc.1), pública, `draft=false`, `prerelease=true`, commit `62b9bc297611337b597b40d57ec3b916bc15fc28`. Os quatro assets tiveram tamanho e digest SHA-256 confirmados pelo GitHub. HEAD anônimo retornou HTTP 200/tamanho esperado para ambos os instaladores; inventário/checksums baixados anonimamente coincidem integralmente com os arquivos locais. [Evidência pública](design/validation/2026-10-08-release-verification.json). O envio PowerShell do MSI teve uma interrupção de conexão; a publicação foi retomada com curl e validada, sem alterar os artefatos.

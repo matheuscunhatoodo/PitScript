@@ -24,30 +24,30 @@ Local-first; nenhuma IA durante gravação; nenhum acesso a arquivos/banco/dispo
 Files: src/utils/meeting.ts, tests/meeting-presentation.test.mjs, src/hooks/useRecording.ts, src/components/{AppShell,Icon,RecordingBar}.tsx, src/pages/{HomePage,NewRecordingPage,SettingsPage}.tsx, src/app/App.tsx, src/styles/app.css.
 Consumes: getRecordingState/startMeeting/stopMeeting/getSettings/listInputDevices/listOutputDevices.
 Produces: useRecording(): RecordingController (capture,busy,error,refresh,start,stop), helpers groupMeetingsByDay/meetingProgressLabel/sourceStatusLabel/clampSeek.
-- [ ] Escrever testes de agrupamento/calendário/falhas e seek; executar npm test (RED).
-- [ ] Implementar helpers e hook global com refresh serial e limpeza de listeners/timers; estado/conflitos visíveis.
-- [ ] Aplicar shell/marca/paleta/lista por dia, formulário sem threads com seletores existentes e console/barra da gravação.
-- [ ] Executar npm test, lint, build; commit da tarefa.
+- [x] Escrever testes de agrupamento/calendário/falhas e seek; executar npm test (RED).
+- [x] Implementar helpers e hook global com refresh serial e limpeza de listeners/timers; estado/conflitos visíveis.
+- [x] Aplicar shell/marca/paleta/lista por dia, formulário sem threads com seletores existentes e console/barra da gravação.
+- [x] Executar npm test, lint, build; commit da tarefa.
 
 ### Task 2: Player e transcrição
 
 Files: src/components/{AudioPlayer,TranscriptView}.tsx, src/pages/MeetingPage.tsx, src/utils/meeting.ts, tests/meeting-presentation.test.mjs, src/styles/app.css.
 Consumes: getMeetingAudio/getMeeting/getMeetingDiarization/copyTranscript/exportTranscript, helpers Task 1.
-Produces: AudioPlayer({url,onTimeChange,onError}), TranscriptView({segments,text,query,selectedMatch,onSeek,currentTime}).
-- [ ] Testar agrupamento de blocos/offsets da busca e escolha de trecho temporal, com sobreposição/fallback (RED).
-- [ ] Player controlado por HTMLAudioElement; eventos reais e seek clamp, limpeza de mídia ao desmontar.
-- [ ] Renderizar blocos sem perder pesquisa por timestamp/locutor; copiar/exportar e cancelamento/retry existentes preservados.
-- [ ] Executar frontend checks e QA de navegação/busca/play/seek/velocidade/fallback; commit.
+Produces: AudioPlayer({url,onTimeChange,seekRequest}), TranscriptView({segments,text,matches,selectedMatch,onSeek,currentTime}).
+- [x] Testar agrupamento de blocos/offsets da busca e escolha de trecho temporal, com sobreposição/fallback (RED).
+- [x] Player controlado por HTMLAudioElement; eventos reais e seek clamp, limpeza de mídia ao desmontar.
+- [x] Renderizar blocos sem perder pesquisa por timestamp/locutor; copiar/exportar e cancelamento/retry existentes preservados.
+- [x] Executar frontend checks e QA de navegação/busca/play/seek/velocidade/fallback; commit.
 
 ### Task 3: Contrato do contador, versão e validação
 
 Files: src-tauri/src/meeting/manager.rs, src/services/meeting.ts, src-tauri/{Cargo.toml,Cargo.lock,tauri.conf.json}, package{,-lock}.json, index.html, docs/UX_RELEASE_REPORT.md, README.md.
 Consumes: MeetingSession.started: Instant, versão 0.1.0 e pipelines existentes.
 Produces: elapsedSeconds: u64 aditivo no get_recording_state; versão 0.1.1 e janela PitScript 1280x800.
-- [ ] Teste Rust de contador monotônico, idle e duração final (RED); implementar extensão sem mudar persistência.
-- [ ] Bump coerente da versão/título/tamanho e documentar implementação/limites/QA visual.
-- [ ] fmt, Clippy, cargo test, frontend lint/test/build/format; production build e Tauri bundle.
-- [ ] Rever ramo completo com agente independente, corrigir achados importantes com testes; commit.
+- [x] Teste Rust de contador monotônico, idle e duração final (RED); implementar extensão sem mudar persistência.
+- [x] Bump coerente da versão/título/tamanho e documentar implementação/limites/QA visual.
+- [x] fmt, Clippy, cargo test, frontend lint/test/build/format; production build e Tauri bundle.
+- [x] Rever ramo completo com agente independente, corrigir achados importantes com testes; commit.
 
 ### Task 4: GitHub e release
 

@@ -34,7 +34,11 @@ Não foram acrescentadas dependências de produto, serviços externos, migration
 | QA em Chromium/Brave headless | 16 cenários aprovados; zero erros de página |
 | QA visual | Referências 1536×1024; notebook 1280×800 e largura 390×844; sem overflow horizontal |
 | `npm run lint`, `npm test`, `npm run format:check`, `npm run build` | Aprovados; 33 módulos, JS 266,56 kB / 81,72 kB gzip no build final |
-| Production build / Tauri bundle | Build Rust release aprovado; bundles finais em validação abaixo |
+| `cargo build --offline --release --features tauri/custom-protocol` | Aprovado |
+| `npm run tauri -- build --ci` | Aprovado; NSIS e MSI 0.1.1 novos |
+| Extração administrativa do MSI | Exit 0; 37/37 recursos idênticos por SHA-256, 118.048.957 bytes |
+| Whisper/sherpa do payload extraído | Exit 0 com PATH contendo somente diretórios de sistema; fixtures públicas, duas threads; 5,73 s / 3,41 s |
+| Inicialização/reabertura do payload | `application_ready` em dois inícios; SQLite schema v4, integridade `ok`, reunião/TXT UTF-8 preservados |
 
 O teste Rust do contador e os novos helpers frontend foram observados falhando antes da implementação e passando depois. A suíte Rust inclui execução real de Whisper/sherpa com fixtures públicas e o ciclo `start → record → stop → prepare → transcribe → persist → reopen` com captura simulada e inferência local real.
 
@@ -56,7 +60,7 @@ Os 16 cenários de navegador cobrem: biblioteca/busca/vazio; segmentos e navega�
 
 ### Revisão independente
 
-Uma revisão do ramo antes da publicação encontrou dois problemas importantes (preferências/fallback e resposta de estado antiga) e um menor (pontuação de pesquisa invisível). Os três foram corrigidos com reprodução RED→GREEN. Nenhum achado crítico foi encontrado. O teste diferido mantém a captura e a finalização visíveis mesmo quando a consulta corretiva falha.
+Uma revisão do ramo antes da publicação encontrou dois problemas importantes (preferências/fallback e resposta de estado antiga) e um menor (pontuação de pesquisa invisível). Os três foram corrigidos com reprodução RED→GREEN e confirmados pelo revisor no commit `0afb260`. Nenhum achado crítico foi encontrado. O teste diferido mantém a captura e a finalização visíveis mesmo quando a consulta corretiva falha.
 
 ### Diferenças deliberadas em relação às imagens
 
@@ -87,4 +91,21 @@ Uma revisão do ramo antes da publicação encontrou dois problemas importantes 
 
 ## Artefatos e publicação
 
-Resultados de bundle, extração, smoke do payload, hashes e link público serão consolidados após a validação final.
+Artefatos novos em `releases/0.1.1/` (ignorados pelo Git):
+
+| Arquivo | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `MeetingRecorder-Setup.exe` | 305.600.737 | `55544d2cd3923d8eac1204769c72e504d82d487188a2046f3474085c1e0fcedb` |
+| `MeetingRecorder-0.1.1-x64.msi` | 311.996.416 | `65f280962d711da249a49ad40182b1f1709697fb202d9cffb7d4a57cd977127c` |
+| `resources-manifest.json` | 10.080 | `1c13349900561a5034ae072e1926d5a9cfa66fc5adda39f3076f109142139e9c` |
+| `SHA256SUMS.txt` | Checksums dos três arquivos acima | Acompanha a release |
+
+Originais do Tauri: `src-tauri/target/release/bundle/nsis/Meeting Recorder_0.1.1_x64-setup.exe` e `src-tauri/target/release/bundle/msi/Meeting Recorder_0.1.1_x64_pt-BR.msi`. Executável `src-tauri/target/release/MeetingRecorder.exe`.
+
+WebView2 offline incluído: instalador Microsoft de 212.358.352 bytes, assinatura válida, versão do instalador 1.3.275.13, SHA-256 `ac22ecdc19c5b88b87f3fa752c00da9541653a8f5c0c5fc4a3b2b6ebe6591f69`. Whisper b5130 / Base Multilingual Q5_1 (59.707.625 bytes), sherpa 1.13.8 / ONNX 1.28.2, segmentação int8 (1.540.506 bytes), WeSpeaker (26.530.550 bytes) e DLLs VC/OpenMP permanecem os recursos anteriores, com licenças incluídas.
+
+A comparação integral do executável extraído confirmou diferença exclusivamente nos três bytes do marcador `__TAURI_BUNDLE_TYPE_VAR_UNK → MSI`, aplicado pelo bundler; todo o restante coincide com o binário de produção. O smoke usa perfil fictício e não grava; seu encerramento forçado em idle não prova finalização de uma gravação. A instalação existente do usuário foi preservada.
+
+Avisos do ambiente: informação do linker MSVC; cache incremental sem hardlinks nos testes; recomendação Tauri sobre identificador `.app` para macOS. Não são erros de Clippy; o alvo é Windows e a identidade foi preservada para upgrade.
+
+Destino da publicação: [v0.1.1-rc.1](https://github.com/matheuscunhatoodo/PitScript/releases/tag/v0.1.1-rc.1), como pré-release. Publicação e downloads públicos serão confirmados na conclusão da etapa.

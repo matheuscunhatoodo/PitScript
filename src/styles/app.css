@@ -725,6 +725,58 @@ progress {
 .page--detail {
   padding-bottom: 130px;
 }
+.meeting-video {
+  margin: 24px 0;
+}
+.meeting-video__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.meeting-video__header h2 {
+  margin: 0;
+}
+.meeting-video video {
+  display: block;
+  width: 100%;
+  max-height: min(440px, 40vh);
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: #191c19;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.meeting-player:fullscreen {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: var(--surface);
+  overflow: auto;
+}
+.meeting-player:fullscreen .meeting-video {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+}
+.meeting-player:fullscreen .meeting-video video {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+}
+.meeting-player:fullscreen .panel-help {
+  display: none;
+}
+.meeting-player:fullscreen .audio-player {
+  position: static;
+  flex: none;
+  padding: 12px;
+}
 .transcript-toolbar {
   display: flex;
   align-items: center;

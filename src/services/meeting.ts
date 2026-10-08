@@ -33,6 +33,12 @@ export async function getMeetingAudio(id: string): Promise<string | null> {
   return path ? convertFileSrc(path) : null;
 }
 
+export async function getMeetingVideo(id: string): Promise<string | null> {
+  requireDesktop();
+  const path = await invoke<string | null>("get_meeting_video", { id });
+  return path ? convertFileSrc(path) : null;
+}
+
 export function exportTranscript(id: string, traditional = false) {
   requireDesktop();
   return invoke<boolean>("export_transcript", { id, traditional });

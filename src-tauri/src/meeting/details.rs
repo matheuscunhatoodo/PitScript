@@ -38,6 +38,21 @@ pub(crate) fn load_meeting(database: &Database, id: &str) -> Result<Meeting, Str
         .ok_or_else(|| "A reunião não foi encontrada.".to_owned())
 }
 
+pub(crate) fn video_path(
+    database: &Database,
+    storage: &StorageManager,
+    id: &str,
+) -> Result<Option<PathBuf>, String> {
+    let meeting = load_meeting(database, id)?;
+    if meeting.finished_at.is_none() || meeting.status == "recording" {
+        return Err("Finalize a gravação antes de reproduzir o vídeo.".to_owned());
+    }
+    Ok(storage
+        .playback_video(id)
+        .map_err(|error| error.to_string())?
+        .filter(|path| crate::video::valid_mp4(path)))
+}
+
 pub(crate) fn folder_path(
     database: &Database,
     storage: &StorageManager,
@@ -188,6 +203,89 @@ mod tests {
         let mut writer = WavWriter::create_with_sample_rate(path, rate).unwrap();
         writer.write_samples(&[0, 0, 1, 0]).unwrap();
         writer.finish().unwrap();
+    }
+
+    fn mp4_container() -> Vec<u8> {
+        include_bytes!("../../tests/fixtures/playback.mp4").to_vec()
+    }
+    #[test]
+    fn video_playback_uses_managed_finalized_mp4_and_preserves_missing_or_invalid_files() {
+        let (root, storage, database, id) = setup();
+        let video = storage.get_video_path(&id).unwrap();
+        assert!(super::video_path(&database, &storage, &id)
+            .unwrap()
+            .is_none());
+        fs::write(&video, mp4_container()).unwrap();
+        assert_eq!(
+            super::video_path(&database, &storage, &id).unwrap(),
+            Some(video.canonicalize().unwrap())
+        );
+        fs::write(&video, b"unfinished mp4").unwrap();
+        assert!(super::video_path(&database, &storage, &id)
+            .unwrap()
+            .is_none());
+        assert_eq!(fs::read(&video).unwrap(), b"unfinished mp4");
+        fs::remove_file(&video).unwrap();
+        fs::create_dir(&video).unwrap();
+        assert!(super::video_path(&database, &storage, &id)
+            .unwrap()
+            .is_none());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn video_playback_rejects_active_unknown_and_external_database_paths() {
+        let (root, storage, database, id) = setup();
+        let outside = root.join("outside.mp4");
+        fs::write(&outside, mp4_container()).unwrap();
+        let connection = database.connect().unwrap();
+        let mut meeting = meetings::get(&connection, &id).unwrap().unwrap();
+        meeting.video_path = Some(outside.to_string_lossy().into_owned());
+        meetings::update(&connection, &meeting).unwrap();
+        assert!(super::video_path(&database, &storage, &id)
+            .unwrap()
+            .is_none());
+        assert!(super::video_path(&database, &storage, "unknown").is_err());
+        let video = storage.get_video_path(&id).unwrap();
+        fs::copy(&outside, &video).unwrap();
+        meeting.status = "recording".into();
+        meetings::update(&connection, &meeting).unwrap();
+        assert!(super::video_path(&database, &storage, &id).is_err());
+        meeting.status = "completed".into();
+        meeting.finished_at = None;
+        meetings::update(&connection, &meeting).unwrap();
+        assert!(super::video_path(&database, &storage, &id).is_err());
+        drop(connection);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn video_playback_keeps_original_folder_after_settings_change_and_restart() {
+        let (root, storage, database, id) = setup();
+        let folder = storage.existing_meeting_directory(&id).unwrap();
+        let video = folder.join("video.mp4");
+        fs::write(&video, mp4_container()).unwrap();
+        let connection = database.connect().unwrap();
+        crate::database::locations::save(&connection, &id, &folder).unwrap();
+        let new_root = root.join("novas gravações");
+        storage.set_recordings_root(storage.prepare_recordings_root(&new_root).unwrap());
+        assert_eq!(
+            super::video_path(&database, &storage, &id).unwrap(),
+            Some(video.clone())
+        );
+        let reopened_storage = StorageManager::initialize_in(&root).unwrap();
+        let reopened_database = Database::initialize(&reopened_storage).unwrap();
+        crate::database::locations::restore(
+            &reopened_database.connect().unwrap(),
+            &reopened_storage,
+        )
+        .unwrap();
+        assert_eq!(
+            super::video_path(&reopened_database, &reopened_storage, &id).unwrap(),
+            Some(video)
+        );
+        drop(connection);
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

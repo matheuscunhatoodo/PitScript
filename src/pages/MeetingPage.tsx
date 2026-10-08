@@ -7,6 +7,7 @@ import {
   exportTranscript,
   getMeeting,
   getMeetingAudio,
+  getMeetingVideo,
   openMeetingFolder,
   getMeetingDiarization,
   diarizeMeeting,
@@ -51,6 +52,8 @@ export function MeetingPage({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [matchIndex, setMatchIndex] = useState(0);
@@ -100,6 +103,8 @@ export function MeetingPage({
       setLoadError(null);
       setAudioError(null);
       setAudioUrl(null);
+      setVideoError(null);
+      setVideoUrl(null);
       setDiarizationError(null);
       setDiarization(null);
       setShowTraditional(false);
@@ -132,6 +137,14 @@ export function MeetingPage({
             if (mounted) setAudioUrl(url);
           } catch (cause) {
             if (mounted) setAudioError(String(cause));
+          }
+        })(),
+        (async () => {
+          try {
+            const url = await getMeetingVideo(id);
+            if (mounted) setVideoUrl(url);
+          } catch (cause) {
+            if (mounted) setVideoError(String(cause));
           }
         })(),
       ]);
@@ -274,6 +287,26 @@ export function MeetingPage({
               reunião.
             </p>
           )}
+          {videoError && (
+            <p className="inline-notice" role="alert">
+              {videoError}
+            </p>
+          )}
+          {meeting.videoEnabled && !videoUrl && !videoError && (
+            <p className="panel-help">
+              Nenhum vídeo reproduzível foi encontrado. Consulte o MP4 na pasta
+              da reunião.
+            </p>
+          )}
+          {(audioUrl || videoUrl) && (
+            <AudioPlayer
+              key={`${audioUrl}:${videoUrl}`}
+              url={audioUrl}
+              videoUrl={videoUrl}
+              onTimeChange={setCurrentTime}
+              seekRequest={seekRequest}
+            />
+          )}
           <section aria-labelledby="transcript-title">
             <div className="transcript-toolbar">
               <h2 id="transcript-title">Transcrição</h2>
@@ -409,7 +442,7 @@ export function MeetingPage({
                   selectedMatch={selectedMatch}
                   currentTime={currentTime}
                   onSeek={
-                    audioUrl
+                    audioUrl || videoUrl
                       ? (seconds) =>
                           setSeekRequest((request) => ({
                             seconds,
@@ -485,14 +518,6 @@ export function MeetingPage({
               Atualizar reunião
             </button>
           </footer>
-          {audioUrl && (
-            <AudioPlayer
-              key={audioUrl}
-              url={audioUrl}
-              onTimeChange={setCurrentTime}
-              seekRequest={seekRequest}
-            />
-          )}
         </>
       )}
       {feedback && (

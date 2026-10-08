@@ -30,6 +30,33 @@ pub async fn get_meeting_audio(
 }
 
 #[tauri::command]
+pub async fn get_meeting_video(
+    database: State<'_, Database>,
+    storage: State<'_, StorageManager>,
+    app: AppHandle,
+    id: String,
+) -> Result<Option<String>, String> {
+    let database = database.inner().clone();
+    let storage = storage.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(path) = details::video_path(&database, &storage, &id).inspect_err(|error| {
+            storage
+                .log()
+                .failure("video_playback_file_failed", Some(&id), error)
+        })?
+        else {
+            return Ok(None);
+        };
+        app.asset_protocol_scope()
+            .allow_file(&path)
+            .map_err(|error| error.to_string())?;
+        Ok(Some(path.to_string_lossy().into_owned()))
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
 pub async fn export_transcript(
     database: State<'_, Database>,
     storage: State<'_, StorageManager>,

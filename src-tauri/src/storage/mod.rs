@@ -414,6 +414,16 @@ impl StorageManager {
         Ok(candidates)
     }
 
+    pub(crate) fn playback_video(&self, id: &str) -> io::Result<Option<PathBuf>> {
+        let path = self.existing_meeting_directory(id)?.join("video.mp4");
+        match fs::symlink_metadata(&path) {
+            Ok(metadata) if metadata.is_file() && !is_link(&metadata) => Ok(Some(path)),
+            Ok(_) => Ok(None),
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
+            Err(error) => Err(error),
+        }
+    }
+
     pub(crate) fn export_text(&self, destination: &Path, text: &str) -> io::Result<()> {
         self.export_text_inner(destination, text)
             .inspect_err(|error| self.log().io_failure("export_file_failed", error))

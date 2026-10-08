@@ -2,7 +2,7 @@
 
 PitScript é o repositório do **Meeting Recorder**, aplicativo Windows para gravar reuniões e transcrever localmente com whisper.cpp.
 
-**Status:** versão 0.1.1 candidata a testes, com a nova UX PitScript. Instalação/desinstalação em Windows limpo, fluxo completo offline e gravação estável de uma hora ainda aguardam validação manual. Consulte o [relatório de estabilização](docs/STABILIZATION_REPORT.md) e o [checklist da release](docs/RELEASE_CHECKLIST.md).
+**Status:** versão 0.1.2 candidata a testes, com a UX PitScript e reprodução de vídeo nas reuniões. Instalação/desinstalação em Windows limpo, fluxo completo offline e gravação estável de uma hora ainda aguardam validação manual. Consulte o [relatório de estabilização](docs/STABILIZATION_REPORT.md) e o [checklist da release](docs/RELEASE_CHECKLIST.md).
 
 Aplicativo desktop Windows 10/11 para gravação local de reuniões e transcrição offline. A implementação atual inclui SQLite, storage local, captura WASAPI de microfone e áudio do sistema, MeetingManager, preparação de áudio, whisper.cpp após a reunião, histórico e detalhe com player, pesquisa, cópia, exportação TXT, abertura da pasta local e identificação local de locutores com sherpa-onnx.
 
@@ -54,9 +54,9 @@ cargo clippy
 cargo test
 ```
 
-## Instalador 0.1.1
+## Instalador 0.1.2
 
-A candidata de UX está na [release v0.1.1-rc.1](https://github.com/matheuscunhatoodo/PitScript/releases/tag/v0.1.1-rc.1). Consulte o [relatório da UX](docs/UX_RELEASE_REPORT.md). Os artefatos de teste ficam em `releases/0.1.1/`: `MeetingRecorder-Setup.exe` (NSIS), MSI adicional, hashes SHA-256 e inventário dos recursos. **A versão é candidata; ainda depende dos critérios manuais da Definition of Done.** Consulte o [relatório da release](docs/RELEASE_REPORT.md) e o [checklist para Windows limpo](docs/RELEASE_CHECKLIST.md).
+A correção do player está na [release v0.1.2-rc.1](https://github.com/matheuscunhatoodo/PitScript/releases/tag/v0.1.2-rc.1). Consulte o [relatório do player de vídeo](docs/VIDEO_PLAYBACK_FIX.md) e o [relatório da UX](docs/UX_RELEASE_REPORT.md). Os artefatos de teste ficam em `releases/0.1.2/`: `MeetingRecorder-Setup.exe` (NSIS), MSI adicional, hashes SHA-256 e inventário dos recursos. **A versão é candidata; ainda depende dos critérios manuais da Definition of Done.** Consulte o [relatório da release](docs/RELEASE_REPORT.md) e o [checklist para Windows limpo](docs/RELEASE_CHECKLIST.md).
 
 O usuário final executa o instalador; não precisa de Node, npm, Rust, Cargo, Python ou Whisper separado. O pacote inclui WebView2 offline, whisper.cpp, Base Multilingual Q5 e os recursos locais de diarização já existentes. A instalação NSIS é por usuário; reuniões ficam em `%LOCALAPPDATA%\MeetingRecorder`, separadas dos arquivos instalados, e são preservadas na desinstalação padrão.
 

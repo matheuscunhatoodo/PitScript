@@ -109,6 +109,7 @@ pub fn run() {
             commands::settings::get_settings,
             commands::settings::save_settings,
             commands::files::get_meeting_audio,
+            commands::files::get_meeting_video,
             commands::files::export_transcript,
             commands::files::open_meeting_folder,
         ])
